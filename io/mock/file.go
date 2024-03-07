@@ -1,16 +1,19 @@
 package mock
 
 import (
+	"io/fs"
 	"os"
 
 	helpers_io "github.com/cjlapao/common-go-helpers/io"
 )
 
 type MockOperation struct {
-	Method string
-	Func   func(args ...MockFuncArgument) interface{}
-	Args   []interface{}
-	Result interface{}
+	Method      string
+	Func        func(args ...MockFuncArgument) interface{}
+	FuncWithErr func(args ...MockFuncArgument) (interface{}, error)
+	ReturnError error
+	CalledWith  []MockFuncArgument
+	ReturnValue interface{}
 }
 
 type MockFuncArgument struct {
@@ -19,12 +22,12 @@ type MockFuncArgument struct {
 }
 
 type MockFileIo struct {
-	mocks []MockOperation
+	mocks []*MockOperation
 }
 
 func NewMockFileIo() *MockFileIo {
 	return &MockFileIo{
-		mocks: []MockOperation{},
+		mocks: []*MockOperation{},
 	}
 }
 
@@ -37,34 +40,26 @@ func GetMockFuncArgumentValue[T any](args []MockFuncArgument, name string) (T, b
 		}
 	}
 
-	t := interface{}(nil).(T)
-	return t, false
+	var def T
+	return def, false
 }
 
 func (f *MockFileIo) On(op MockOperation) *MockOperation {
 	if f.mocks == nil {
-		f.mocks = []MockOperation{}
+		f.mocks = []*MockOperation{}
 	}
 
-	f.mocks = append(f.mocks, op)
-	return &f.mocks[len(f.mocks)-1]
+	f.mocks = append(f.mocks, &op)
+	return f.mocks[len(f.mocks)-1]
 }
 
 func (f MockFileIo) GetOperatingSystem() helpers_io.OperatingSystem {
 	for _, op := range f.mocks {
 		if op.Method == "GetOperatingSystem" {
 			if op.Func != nil {
-				result, ok := op.Func().(helpers_io.OperatingSystem)
-				if !ok {
-					return helpers_io.UnknownOs
-				}
-				return result
+				return processFunction[helpers_io.OperatingSystem](op.Func)
 			} else {
-				if result, ok := op.Result.(helpers_io.OperatingSystem); ok {
-					return result
-				} else {
-					return helpers_io.UnknownOs
-				}
+				return processResult[helpers_io.OperatingSystem](op.ReturnValue)
 			}
 		}
 	}
@@ -80,13 +75,10 @@ func (f MockFileIo) FileExists(path string) bool {
 					Name:  "path",
 					Value: path,
 				}
-				result, ok := op.Func(argument).(bool)
-				if !ok {
-					return false
-				}
-				return result
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunction[bool](op.Func, argument)
 			} else {
-				return op.Result.(bool)
+				return processResult[bool](op.ReturnValue)
 			}
 		}
 	}
@@ -102,13 +94,10 @@ func (f MockFileIo) DirExists(folderPath string) bool {
 					Name:  "folderPath",
 					Value: folderPath,
 				}
-				result, ok := op.Func(argument).(bool)
-				if !ok {
-					return false
-				}
-				return result
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunction[bool](op.Func, argument)
 			} else {
-				return op.Result.(bool)
+				return processResult[bool](op.ReturnValue)
 			}
 		}
 	}
@@ -124,20 +113,10 @@ func (f MockFileIo) CreateDir(folderPath string, mode os.FileMode) error {
 					Name:  "folderPath",
 					Value: folderPath,
 				}
-				result, ok := op.Func(argument).(error)
-				if !ok {
-					return nil
-				}
-				return result
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunction[error](op.Func, argument)
 			} else {
-				if op.Result == nil {
-					return nil
-				}
-				if result, ok := op.Result.(error); ok {
-					return result
-				} else {
-					return nil
-				}
+				return processResult[error](op.ReturnValue)
 			}
 		}
 	}
@@ -145,248 +124,226 @@ func (f MockFileIo) CreateDir(folderPath string, mode os.FileMode) error {
 	return nil
 }
 
-// func (f MockFileIo) GetExecutionPath() string {
-// 	return os.Args[0]
-// }
+func (f MockFileIo) GetExecutionPath() string {
+	for _, op := range f.mocks {
+		if op.Method == "GetExecutionPath" {
+			if op.Func != nil {
+				return processFunction[string](op.Func)
+			} else {
+				return processResult[string](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) GetOsPathSeparator() string {
-// 	switch getOperatingSystem() {
-// 	case WindowsOs:
-// 		return "\\"
-// 	case LinuxOs:
-// 		return "/"
-// 	case MacOs:
-// 		return "/"
-// 	default:
-// 		return "/"
-// 	}
-// }
+	return ""
+}
 
-// func (f MockFileIo) ToOsPath(path string) string {
-// 	switch getOperatingSystem() {
-// 	case WindowsOs:
-// 		return strings.ReplaceAll(path, "/", "\\")
-// 	case LinuxOs:
-// 		if strings.ContainsAny(path, ":") {
-// 			pathParts := strings.Split(path, ":")
-// 			path = pathParts[1]
-// 		}
-// 		return strings.ReplaceAll(path, "\\", "/")
-// 	case MacOs:
-// 		if strings.ContainsAny(path, ":") {
-// 			pathParts := strings.Split(path, ":")
-// 			path = pathParts[1]
-// 		}
-// 		return strings.ReplaceAll(path, "\\", "/")
-// 	default:
-// 		return path
-// 	}
-// }
+func (f MockFileIo) GetOsPathSeparator() string {
+	for _, op := range f.mocks {
+		if op.Method == "GetOsPathSeparator" {
+			if op.Func != nil {
+				return processFunction[string](op.Func)
+			} else {
+				return processResult[string](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) ReadFile(path string) ([]byte, error) {
-// 	if !f.FileExists(path) {
-// 		return nil, os.ErrNotExist
-// 	}
+	return "/"
+}
 
-// 	data, err := os.ReadFile(path)
-// 	return data, err
-// }
+func (f MockFileIo) ToOsPath(path string) string {
+	for _, op := range f.mocks {
+		if op.Method == "ToOsPath" {
+			if op.Func != nil {
+				argument := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunction[string](op.Func, argument)
+			} else {
+				return processResult[string](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) ReadBufferedFile(path string, from, to int) ([]byte, error) {
-// 	if !f.FileExists(path) {
-// 		return nil, os.ErrNotExist
-// 	}
+	return path
+}
 
-// 	file, err := os.Open(path)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer file.Close()
+func (f MockFileIo) ReadFile(path string) ([]byte, error) {
+	for _, op := range f.mocks {
+		if op.Method == "ReadFile" {
+			if op.FuncWithErr != nil {
+				argument := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunctionWithErr[[]byte](op.FuncWithErr, op.ReturnError, argument)
+			} else {
+				return processResult[[]byte](op.ReturnValue), op.ReturnError
+			}
+		}
+	}
 
-// 	stat, err := file.Stat()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	return nil, os.ErrNotExist
+}
 
-// 	if int(stat.Size()) < to || to == 0 {
-// 		to = int(stat.Size())
-// 	}
+func (f MockFileIo) ReadBufferedFile(path string, from, to int) ([]byte, error) {
+	for _, op := range f.mocks {
+		if op.Method == "ReadBufferedFile" {
+			if op.FuncWithErr != nil {
+				argument1 := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				argument2 := MockFuncArgument{
+					Name:  "from",
+					Value: from,
+				}
+				argument3 := MockFuncArgument{
+					Name:  "to",
+					Value: to,
+				}
+				op.CalledWith = append(op.CalledWith, argument1, argument2, argument3)
+				return processFunctionWithErr[[]byte](op.FuncWithErr, op.ReturnError, argument1, argument2, argument3)
+			} else {
+				return processResult[[]byte](op.ReturnValue), op.ReturnError
+			}
+		}
+	}
 
-// 	buffer := make([]byte, to-from)
-// 	_, err = file.ReadAt(buffer, int64(from))
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	return nil, os.ErrNotExist
+}
 
-// 	return buffer, nil
-// }
+func (f MockFileIo) WriteFile(path string, data []byte, mode os.FileMode) error {
+	for _, op := range f.mocks {
+		if op.Method == "WriteFile" {
+			if op.Func != nil {
+				argument1 := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				argument2 := MockFuncArgument{
+					Name:  "data",
+					Value: data,
+				}
+				argument3 := MockFuncArgument{
+					Name:  "mode",
+					Value: mode,
+				}
+				op.CalledWith = append(op.CalledWith, argument1, argument2, argument3)
+				return processFunction[error](op.Func, argument1, argument2, argument3)
+			} else {
+				return processResult[error](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) WriteFile(path string, data []byte, mode os.FileMode) error {
-// 	err := os.WriteFile(path, data, mode)
-// 	if err != nil {
-// 		return err
-// 	}
+	return nil
+}
 
-// 	return nil
-// }
+func (f MockFileIo) WriteBufferedFile(path string, data []byte, bufferSize int, mode os.FileMode) error {
+	for _, op := range f.mocks {
+		if op.Method == "WriteBufferedFile" {
+			if op.Func != nil {
+				argument1 := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				argument2 := MockFuncArgument{
+					Name:  "data",
+					Value: data,
+				}
+				argument3 := MockFuncArgument{
+					Name:  "bufferSize",
+					Value: bufferSize,
+				}
+				op.CalledWith = append(op.CalledWith, argument1, argument2, argument3)
+				return processFunction[error](op.Func, argument1, argument2, argument3)
+			} else {
+				return processResult[error](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) WriteBufferedFile(path string, data []byte, bufferSize int) error {
-// 	file, err := os.Create(path)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer file.Close()
+	return nil
+}
 
-// 	for i := 0; i < len(data); i += bufferSize {
-// 		end := i + bufferSize
-// 		if end > len(data) {
-// 			end = len(data)
-// 		}
-// 		_, err = file.Write(data[i:end])
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
+func (f MockFileIo) ReadDir(path string) ([]fs.DirEntry, error) {
+	for _, op := range f.mocks {
+		if op.Method == "ReadDir" {
+			if op.FuncWithErr != nil {
+				argument := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunctionWithErr[[]fs.DirEntry](op.FuncWithErr, op.ReturnError, argument)
+			} else {
+				return processResult[[]fs.DirEntry](op.ReturnValue), op.ReturnError
+			}
+		}
+	}
 
-// 	return nil
-// }
-
-// func (f MockFileIo) ReadDir(path string) ([]fs.DirEntry, error) {
-// 	dir, err := os.ReadDir(path)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return dir, nil
-// }
+	return nil, os.ErrNotExist
+}
 
 // func (f MockFileIo) JoinPath(parts ...string) string {
-// 	for i := range parts {
-// 		parts[i] = strings.ReplaceAll(parts[i], "\\", "")
-// 		parts[i] = strings.ReplaceAll(parts[i], "/", "")
-// 	}
-
-// 	return strings.Join(parts, f.GetOsPathSeparator())
 // }
 
 // func (f MockFileIo) CopyFile(source, destination string) error {
-// 	sourceFile, err := os.Open(source)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer sourceFile.Close()
-
-// 	destinationFile, err := os.Create(destination)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer destinationFile.Close()
-
-// 	_, err = io.Copy(destinationFile, sourceFile)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	err = destinationFile.Sync()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	si, err := sourceFile.Stat()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	err = os.Chmod(destination, si.Mode())
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
 // }
 
 // func (f MockFileIo) DeleteFile(path string) error {
-// 	err := os.Remove(path)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
 // }
 
 // func (f MockFileIo) CopyDir(source, destination string) error {
-// 	sourceInfo, err := os.Stat(source)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	err = os.MkdirAll(destination, sourceInfo.Mode())
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	directory, err := os.ReadDir(source)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	for _, file := range directory {
-// 		sourcePath := filepath.Join(source, file.Name())
-// 		destinationPath := filepath.Join(destination, file.Name())
-
-// 		if file.IsDir() {
-// 			err = f.CopyDir(sourcePath, destinationPath)
-// 			if err != nil {
-// 				return err
-// 			}
-// 		} else {
-// 			err = f.CopyFile(sourcePath, destinationPath)
-// 			if err != nil {
-// 				return err
-// 			}
-// 		}
-// 	}
-
-// 	return nil
 // }
 
 // func (f MockFileIo) DeleteDir(path string) error {
-// 	err := os.RemoveAll(path)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
 // }
 
 // func (f MockFileIo) Checksum(path string, method ChecksumMethod) (string, error) {
-// 	file, err := os.Open(path)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	var hash hash.Hash
-// 	switch method {
-// 	case MD5:
-// 		hash = md5.New()
-// 		_, err := io.Copy(hash, file)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 	case SHA1:
-// 		hash = sha1.New()
-// 		_, err := io.Copy(hash, file)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 	case SHA256:
-// 		hash = sha256.New()
-// 		_, err := io.Copy(hash, file)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 	default:
-// 		return "", errors.New("invalid checksum method")
-// 	}
-
-// 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 // }
+
+func processFunction[T any](fn func(args ...MockFuncArgument) interface{}, args ...MockFuncArgument) T {
+	var def T
+	if fn != nil {
+		result, ok := fn(args...).(T)
+		if !ok {
+			return def
+		}
+		return result
+	}
+
+	return def
+}
+
+func processFunctionWithErr[T any](fn func(args ...MockFuncArgument) (interface{}, error), err error, args ...MockFuncArgument) (T, error) {
+	var def T
+	if fn != nil {
+		result, funcErr := fn(args...)
+		if result, ok := result.(T); !ok {
+			return def, funcErr
+		} else {
+			return result, funcErr
+		}
+	}
+
+	return def, err
+}
+
+func processResult[T any](result interface{}) T {
+	var def T
+	if result != nil {
+		if result, ok := result.(T); ok {
+			return result
+		} else {
+			return def
+		}
+	}
+
+	return def
+}

@@ -124,8 +124,9 @@ func (f DefaultFileIo) WriteFile(path string, data []byte, mode os.FileMode) err
 	return nil
 }
 
-func (f DefaultFileIo) WriteBufferedFile(path string, data []byte, bufferSize int) error {
+func (f DefaultFileIo) WriteBufferedFile(path string, data []byte, bufferSize int, mode os.FileMode) error {
 	file, err := os.Create(path)
+	file.Chmod(mode)
 	if err != nil {
 		return err
 	}

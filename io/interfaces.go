@@ -1,6 +1,9 @@
 package io
 
-import "io/fs"
+import (
+	"io/fs"
+	"os"
+)
 
 type FileIo interface {
 	GetOperatingSystem() OperatingSystem
@@ -12,8 +15,8 @@ type FileIo interface {
 	GetOsPathSeparator() string
 	ReadFile(path string) ([]byte, error)
 	ReadBufferedFile(path string, from, to int) ([]byte, error)
-	WriteFile(path string, data []byte) error
-	WriteBufferedFile(path string, data []byte, bufferSize int) error
+	WriteFile(path string, data []byte, mode os.FileMode) error
+	WriteBufferedFile(path string, data []byte, bufferSize int, mode os.FileMode) error
 	ReadDir(path string) ([]fs.DirEntry, error)
 	JoinPath(parts ...string) string
 	CopyFile(source, destination string) error

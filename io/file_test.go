@@ -320,7 +320,7 @@ func TestWriteBufferedFile(t *testing.T) {
 		testData := []byte("Test data")
 		bufferSize := 5
 
-		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize)
+		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize, os.ModePerm)
 		if err != nil {
 			t.Errorf("Failed to write buffered file: %v", err)
 		}
@@ -353,7 +353,7 @@ func TestWriteBufferedFile(t *testing.T) {
 		testData := []byte{}
 		bufferSize := 5
 
-		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize)
+		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize, os.ModePerm)
 		if err != nil {
 			t.Errorf("Failed to write buffered file: %v", err)
 		}
@@ -386,7 +386,7 @@ func TestWriteBufferedFile(t *testing.T) {
 		testData := []byte("This is a large amount of data")
 		bufferSize := 10
 
-		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize)
+		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize, os.ModePerm)
 		if err != nil {
 			t.Errorf("Failed to write buffered file: %v", err)
 		}
