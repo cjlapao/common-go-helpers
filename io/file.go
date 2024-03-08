@@ -126,17 +126,21 @@ func (f DefaultFileIo) WriteFile(path string, data []byte, mode os.FileMode) err
 
 func (f DefaultFileIo) WriteBufferedFile(path string, data []byte, bufferSize int, mode os.FileMode) error {
 	file, err := os.Create(path)
-	file.Chmod(mode)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+
+	if err := file.Chmod(mode); err != nil {
+		return err
+	}
 
 	for i := 0; i < len(data); i += bufferSize {
 		end := i + bufferSize
 		if end > len(data) {
 			end = len(data)
 		}
+
 		_, err = file.Write(data[i:end])
 		if err != nil {
 			return err
