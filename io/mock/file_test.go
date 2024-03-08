@@ -10,6 +10,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestNewMockFileIo(t *testing.T) {
+	mockFileIo := NewMockFileIo()
+
+	// Verify if the returned value is not nil
+	if mockFileIo == nil {
+		t.Errorf("Expected non-nil MockFileIo instance, but got nil")
+	}
+}
+
+func TestMockFileIo_On(t *testing.T) {
+	mockFileIo := &MockFileIo{}
+	op := MockOperation{}
+
+	// Call the On method
+	result := mockFileIo.On(op)
+
+	// Verify if the returned value is the same as the last element in the mocks slice
+	if result != mockFileIo.mocks[len(mockFileIo.mocks)-1] {
+		t.Errorf("Expected returned value to be the same as the last element in the mocks slice")
+	}
+}
+
 func TestGetMockFuncArgumentValue(t *testing.T) {
 	args := []MockFuncArgument{
 		{Name: "arg1", Value: 10},
@@ -813,11 +835,13 @@ func TestMockFileIo_WriteBufferedFile(t *testing.T) {
 
 	t.Run("Mock Function with no error", func(t *testing.T) {
 		result := mockFileIo.WriteBufferedFile(filepath, data, 10, mode)
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, filepath)
 		assert.Nil(t, result)
 	})
 
 	t.Run("Mock Function with error", func(t *testing.T) {
 		result := mockFileIo.WriteBufferedFile("unknown_file.txt", data, 10, mode)
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, "unknown_file.txt")
 		assert.Equal(t, result, expectedError)
 	})
 
@@ -832,7 +856,6 @@ func TestMockFileIo_WriteBufferedFile(t *testing.T) {
 		}
 
 		result := mockFileIo.WriteBufferedFile(filepath, data, 10, mode)
-		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, filepath)
 		assert.Equal(t, result, expectedError)
 	})
 }
@@ -890,7 +913,7 @@ func TestMockFileIo_ReadDir(t *testing.T) {
 		mockFileIo := MockFileIo{
 			mocks: []*MockOperation{
 				{
-					Method:      "ReadBufferedFile",
+					Method:      "ReadDir",
 					ReturnError: expectedErr,
 					ReturnValue: nil,
 				},
@@ -932,5 +955,395 @@ func TestMockFileIo_ReadDir(t *testing.T) {
 		content, err := mockFileIo.ReadBufferedFile(filepath, from, to)
 		assert.Nil(t, err)
 		assert.Nil(t, content)
+	})
+}
+
+func TestMockFileIo_JoinPath(t *testing.T) {
+	parts := []string{"path", "to", "file"}
+	mockFileIo := MockFileIo{
+		mocks: []*MockOperation{
+			{
+				Method: "JoinPath",
+				Func: func(args ...MockFuncArgument) interface{} {
+					return "/joined/path"
+				},
+			},
+		},
+	}
+
+	t.Run("Mock No Op", func(t *testing.T) {
+		mockFileIo := MockFileIo{}
+		result := mockFileIo.JoinPath(parts...)
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("Mock Function", func(t *testing.T) {
+		result := mockFileIo.JoinPath(parts...)
+		assert.Equal(t, "/joined/path", result)
+		assert.Equal(t, 3, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, parts[0], mockFileIo.mocks[0].CalledWith[0].Value.(string))
+		assert.Equal(t, parts[1], mockFileIo.mocks[0].CalledWith[1].Value.(string))
+		assert.Equal(t, parts[2], mockFileIo.mocks[0].CalledWith[2].Value.(string))
+	})
+
+	t.Run("Mock Result", func(t *testing.T) {
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "JoinPath",
+					ReturnValue: "/joined/path",
+				},
+			},
+		}
+
+		folderPath := "/joined/path"
+		err := mockFileIo.JoinPath(parts...)
+		assert.Equal(t, folderPath, err)
+	})
+}
+
+func TestMockFileIo_CopyFile(t *testing.T) {
+	source := "test_file.txt"
+	destination := "test_file_copy.txt"
+	expectedError := errors.New("some error")
+
+	mockFileIo := MockFileIo{
+		mocks: []*MockOperation{
+			{
+				Method: "CopyFile",
+				Func: func(args ...MockFuncArgument) interface{} {
+					source, ok := GetMockFuncArgumentValue[string](args, "source")
+					if !ok {
+						return nil
+					}
+
+					if source == "test_file.txt" {
+						return nil
+					} else {
+						return expectedError
+					}
+				},
+			},
+		},
+	}
+
+	t.Run("Mock No Op", func(t *testing.T) {
+		mockFileIo := MockFileIo{}
+		result := mockFileIo.CopyFile(source, destination)
+		assert.Empty(t, result)
+	})
+
+	t.Run("Mock Function with no error", func(t *testing.T) {
+		result := mockFileIo.CopyFile(source, destination)
+		assert.Equal(t, 2, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, source)
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[1].Value, destination)
+		assert.Nil(t, result)
+	})
+
+	t.Run("Mock Function with error", func(t *testing.T) {
+		result := mockFileIo.CopyFile("unknown_file.txt", destination)
+		assert.Equal(t, 2, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, "unknown_file.txt")
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[1].Value, destination)
+		assert.Equal(t, result, expectedError)
+	})
+
+	t.Run("Mock Result", func(t *testing.T) {
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "CopyFile",
+					ReturnValue: expectedError,
+				},
+			},
+		}
+
+		result := mockFileIo.CopyFile(source, destination)
+		assert.Equal(t, result, expectedError)
+	})
+}
+
+func TestMockFileIo_DeleteFile(t *testing.T) {
+	path := "test_file.txt"
+	expectedError := errors.New("some error")
+
+	mockFileIo := MockFileIo{
+		mocks: []*MockOperation{
+			{
+				Method: "DeleteFile",
+				Func: func(args ...MockFuncArgument) interface{} {
+					path, ok := GetMockFuncArgumentValue[string](args, "path")
+					if !ok {
+						return nil
+					}
+
+					if path == "test_file.txt" {
+						return nil
+					} else {
+						return expectedError
+					}
+				},
+			},
+		},
+	}
+
+	t.Run("Mock No Op", func(t *testing.T) {
+		mockFileIo := MockFileIo{}
+		result := mockFileIo.DeleteFile(path)
+		assert.Empty(t, result)
+	})
+
+	t.Run("Mock Function with no error", func(t *testing.T) {
+		result := mockFileIo.DeleteFile(path)
+		assert.Equal(t, 1, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, path)
+		assert.Nil(t, result)
+	})
+
+	t.Run("Mock Function with error", func(t *testing.T) {
+		result := mockFileIo.DeleteFile("unknown_file.txt")
+		assert.Equal(t, 1, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, "unknown_file.txt")
+		assert.Equal(t, result, expectedError)
+	})
+
+	t.Run("Mock Result", func(t *testing.T) {
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "DeleteFile",
+					ReturnValue: expectedError,
+				},
+			},
+		}
+
+		result := mockFileIo.DeleteFile(path)
+		assert.Equal(t, result, expectedError)
+	})
+}
+
+func TestMockFileIo_CopyDir(t *testing.T) {
+	source := "test_file.txt"
+	destination := "test_file_copy.txt"
+	expectedError := errors.New("some error")
+
+	mockFileIo := MockFileIo{
+		mocks: []*MockOperation{
+			{
+				Method: "CopyDir",
+				Func: func(args ...MockFuncArgument) interface{} {
+					source, ok := GetMockFuncArgumentValue[string](args, "source")
+					if !ok {
+						return nil
+					}
+
+					if source == "test_file.txt" {
+						return nil
+					} else {
+						return expectedError
+					}
+				},
+			},
+		},
+	}
+
+	t.Run("Mock No Op", func(t *testing.T) {
+		mockFileIo := MockFileIo{}
+		result := mockFileIo.CopyDir(source, destination)
+		assert.Empty(t, result)
+	})
+
+	t.Run("Mock Function with no error", func(t *testing.T) {
+		result := mockFileIo.CopyDir(source, destination)
+		assert.Equal(t, 2, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, source)
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[1].Value, destination)
+		assert.Nil(t, result)
+	})
+
+	t.Run("Mock Function with error", func(t *testing.T) {
+		result := mockFileIo.CopyDir("unknown_file.txt", destination)
+		assert.Equal(t, 2, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, "unknown_file.txt")
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[1].Value, destination)
+		assert.Equal(t, result, expectedError)
+	})
+
+	t.Run("Mock Result", func(t *testing.T) {
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "CopyDir",
+					ReturnValue: expectedError,
+				},
+			},
+		}
+
+		result := mockFileIo.CopyDir(source, destination)
+		assert.Equal(t, result, expectedError)
+	})
+}
+
+func TestMockFileIo_DeleteDir(t *testing.T) {
+	path := "test_file.txt"
+	expectedError := errors.New("some error")
+
+	mockFileIo := MockFileIo{
+		mocks: []*MockOperation{
+			{
+				Method: "DeleteDir",
+				Func: func(args ...MockFuncArgument) interface{} {
+					path, ok := GetMockFuncArgumentValue[string](args, "path")
+					if !ok {
+						return nil
+					}
+
+					if path == "test_file.txt" {
+						return nil
+					} else {
+						return expectedError
+					}
+				},
+			},
+		},
+	}
+
+	t.Run("Mock No Op", func(t *testing.T) {
+		mockFileIo := MockFileIo{}
+		result := mockFileIo.DeleteDir(path)
+		assert.Empty(t, result)
+	})
+
+	t.Run("Mock Function with no error", func(t *testing.T) {
+		result := mockFileIo.DeleteDir(path)
+		assert.Equal(t, 1, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, path)
+		assert.Nil(t, result)
+	})
+
+	t.Run("Mock Function with error", func(t *testing.T) {
+		result := mockFileIo.DeleteDir("unknown_file.txt")
+		assert.Equal(t, 1, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, "unknown_file.txt")
+		assert.Equal(t, result, expectedError)
+	})
+
+	t.Run("Mock Result", func(t *testing.T) {
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "DeleteDir",
+					ReturnValue: expectedError,
+				},
+			},
+		}
+
+		result := mockFileIo.DeleteDir(path)
+		assert.Equal(t, result, expectedError)
+	})
+}
+
+func TestMockFileIo_Checksum(t *testing.T) {
+	filepath := "test_file.txt"
+	method := helpers_io.ChecksumMD5
+	result := "abc"
+	mockFileIo := MockFileIo{
+		mocks: []*MockOperation{
+			{
+				Method: "Checksum",
+				FuncWithErr: func(args ...MockFuncArgument) (interface{}, error) {
+					return result, nil
+				},
+			},
+		},
+	}
+
+	t.Run("Mock no Function", func(t *testing.T) {
+		mockFileIo := MockFileIo{}
+		content, err := mockFileIo.Checksum(filepath, method)
+		assert.Error(t, err)
+		assert.Empty(t, content)
+	})
+
+	t.Run("Mock Function", func(t *testing.T) {
+		content, err := mockFileIo.Checksum(filepath, method)
+		assert.NoError(t, err)
+		assert.Equal(t, result, content)
+		assert.Equal(t, 2, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, filepath)
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[1].Value, method)
+	})
+
+	t.Run("Mock Function Error", func(t *testing.T) {
+		expectedErr := errors.New("mock error")
+
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method: "Checksum",
+					FuncWithErr: func(args ...MockFuncArgument) (interface{}, error) {
+						return nil, expectedErr
+					},
+				},
+			},
+		}
+
+		result, err := mockFileIo.Checksum(filepath, method)
+		assert.Equal(t, expectedErr, err)
+		assert.Empty(t, result)
+		assert.Equal(t, 2, len(mockFileIo.mocks[0].CalledWith))
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[0].Value, filepath)
+		assert.Equal(t, mockFileIo.mocks[0].CalledWith[1].Value, method)
+	})
+
+	t.Run("Mock Result", func(t *testing.T) {
+		expectedErr := errors.New("mock error")
+
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "Checksum",
+					ReturnError: expectedErr,
+					ReturnValue: nil,
+				},
+			},
+		}
+
+		content, err := mockFileIo.Checksum(filepath, method)
+		assert.Equal(t, expectedErr, err)
+		assert.Empty(t, content)
+	})
+
+	t.Run("Mock Nil Result", func(t *testing.T) {
+		expectedErr := errors.New("mock error")
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "Checksum",
+					ReturnValue: nil,
+					ReturnError: expectedErr,
+				},
+			},
+		}
+
+		result, err := mockFileIo.Checksum(filepath, method)
+		assert.Equal(t, err, expectedErr)
+		assert.Empty(t, result)
+	})
+
+	t.Run("Mock Wrong Result", func(t *testing.T) {
+		mockFileIo := MockFileIo{
+			mocks: []*MockOperation{
+				{
+					Method:      "Checksum",
+					ReturnValue: false,
+				},
+			},
+		}
+
+		content, err := mockFileIo.Checksum(filepath, method)
+		assert.Nil(t, err)
+		assert.Empty(t, content)
 	})
 }

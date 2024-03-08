@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 
@@ -71,6 +72,7 @@ func (f MockFileIo) FileExists(path string) bool {
 	for _, op := range f.mocks {
 		if op.Method == "FileExists" {
 			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument := MockFuncArgument{
 					Name:  "path",
 					Value: path,
@@ -90,6 +92,7 @@ func (f MockFileIo) DirExists(folderPath string) bool {
 	for _, op := range f.mocks {
 		if op.Method == "DirExists" {
 			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument := MockFuncArgument{
 					Name:  "folderPath",
 					Value: folderPath,
@@ -109,6 +112,7 @@ func (f MockFileIo) CreateDir(folderPath string, mode os.FileMode) error {
 	for _, op := range f.mocks {
 		if op.Method == "CreateDir" {
 			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument := MockFuncArgument{
 					Name:  "folderPath",
 					Value: folderPath,
@@ -156,6 +160,7 @@ func (f MockFileIo) ToOsPath(path string) string {
 	for _, op := range f.mocks {
 		if op.Method == "ToOsPath" {
 			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument := MockFuncArgument{
 					Name:  "path",
 					Value: path,
@@ -175,6 +180,7 @@ func (f MockFileIo) ReadFile(path string) ([]byte, error) {
 	for _, op := range f.mocks {
 		if op.Method == "ReadFile" {
 			if op.FuncWithErr != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument := MockFuncArgument{
 					Name:  "path",
 					Value: path,
@@ -194,6 +200,7 @@ func (f MockFileIo) ReadBufferedFile(path string, from, to int) ([]byte, error) 
 	for _, op := range f.mocks {
 		if op.Method == "ReadBufferedFile" {
 			if op.FuncWithErr != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument1 := MockFuncArgument{
 					Name:  "path",
 					Value: path,
@@ -221,6 +228,7 @@ func (f MockFileIo) WriteFile(path string, data []byte, mode os.FileMode) error 
 	for _, op := range f.mocks {
 		if op.Method == "WriteFile" {
 			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument1 := MockFuncArgument{
 					Name:  "path",
 					Value: path,
@@ -248,6 +256,7 @@ func (f MockFileIo) WriteBufferedFile(path string, data []byte, bufferSize int, 
 	for _, op := range f.mocks {
 		if op.Method == "WriteBufferedFile" {
 			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument1 := MockFuncArgument{
 					Name:  "path",
 					Value: path,
@@ -275,6 +284,7 @@ func (f MockFileIo) ReadDir(path string) ([]fs.DirEntry, error) {
 	for _, op := range f.mocks {
 		if op.Method == "ReadDir" {
 			if op.FuncWithErr != nil {
+				op.CalledWith = []MockFuncArgument{}
 				argument := MockFuncArgument{
 					Name:  "path",
 					Value: path,
@@ -290,23 +300,139 @@ func (f MockFileIo) ReadDir(path string) ([]fs.DirEntry, error) {
 	return nil, os.ErrNotExist
 }
 
-// func (f MockFileIo) JoinPath(parts ...string) string {
-// }
+func (f MockFileIo) JoinPath(parts ...string) string {
+	for _, op := range f.mocks {
+		if op.Method == "JoinPath" {
+			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
+				for i, part := range parts {
+					argument := MockFuncArgument{
+						Name:  fmt.Sprintf("parts_%v", i),
+						Value: part,
+					}
+					op.CalledWith = append(op.CalledWith, argument)
+				}
+				return processFunction[string](op.Func, op.CalledWith...)
+			} else {
+				return processResult[string](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) CopyFile(source, destination string) error {
-// }
+	return ""
+}
 
-// func (f MockFileIo) DeleteFile(path string) error {
-// }
+func (f MockFileIo) CopyFile(source, destination string) error {
+	for _, op := range f.mocks {
+		if op.Method == "CopyFile" {
+			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
+				argument1 := MockFuncArgument{
+					Name:  "source",
+					Value: source,
+				}
+				argument2 := MockFuncArgument{
+					Name:  "destination",
+					Value: destination,
+				}
+				op.CalledWith = append(op.CalledWith, argument1, argument2)
+				return processFunction[error](op.Func, argument1, argument2)
+			} else {
+				return processResult[error](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) CopyDir(source, destination string) error {
-// }
+	return nil
+}
 
-// func (f MockFileIo) DeleteDir(path string) error {
-// }
+func (f MockFileIo) DeleteFile(path string) error {
+	for _, op := range f.mocks {
+		if op.Method == "DeleteFile" {
+			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
+				argument := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunction[error](op.Func, argument)
+			} else {
+				return processResult[error](op.ReturnValue)
+			}
+		}
+	}
 
-// func (f MockFileIo) Checksum(path string, method ChecksumMethod) (string, error) {
-// }
+	return nil
+}
+
+func (f MockFileIo) CopyDir(source, destination string) error {
+	for _, op := range f.mocks {
+		if op.Method == "CopyDir" {
+			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
+				argument1 := MockFuncArgument{
+					Name:  "source",
+					Value: source,
+				}
+				argument2 := MockFuncArgument{
+					Name:  "destination",
+					Value: destination,
+				}
+				op.CalledWith = append(op.CalledWith, argument1, argument2)
+				return processFunction[error](op.Func, argument1, argument2)
+			} else {
+				return processResult[error](op.ReturnValue)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (f MockFileIo) DeleteDir(path string) error {
+	for _, op := range f.mocks {
+		if op.Method == "DeleteDir" {
+			if op.Func != nil {
+				op.CalledWith = []MockFuncArgument{}
+				argument := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				op.CalledWith = append(op.CalledWith, argument)
+				return processFunction[error](op.Func, argument)
+			} else {
+				return processResult[error](op.ReturnValue)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (f MockFileIo) Checksum(path string, method helpers_io.ChecksumMethod) (string, error) {
+	for _, op := range f.mocks {
+		if op.Method == "Checksum" {
+			if op.FuncWithErr != nil {
+				op.CalledWith = []MockFuncArgument{}
+				argument1 := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				argument2 := MockFuncArgument{
+					Name:  "method",
+					Value: method,
+				}
+				op.CalledWith = append(op.CalledWith, argument1, argument2)
+				return processFunctionWithErr[string](op.FuncWithErr, op.ReturnError, argument1, argument2)
+			} else {
+				return processResult[string](op.ReturnValue), op.ReturnError
+			}
+		}
+	}
+
+	return "", os.ErrNotExist
+}
 
 func processFunction[T any](fn func(args ...MockFuncArgument) interface{}, args ...MockFuncArgument) T {
 	var def T

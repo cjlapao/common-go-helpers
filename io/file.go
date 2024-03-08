@@ -261,19 +261,19 @@ func (f DefaultFileIo) Checksum(path string, method ChecksumMethod) (string, err
 	}
 	var hash hash.Hash
 	switch method {
-	case MD5:
+	case ChecksumMD5:
 		hash = md5.New()
 		_, err := io.Copy(hash, file)
 		if err != nil {
 			return "", err
 		}
-	case SHA1:
+	case ChecksumSHA1:
 		hash = sha1.New()
 		_, err := io.Copy(hash, file)
 		if err != nil {
 			return "", err
 		}
-	case SHA256:
+	case ChecksumSHA256:
 		hash = sha256.New()
 		_, err := io.Copy(hash, file)
 		if err != nil {
