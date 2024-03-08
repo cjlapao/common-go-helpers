@@ -320,7 +320,7 @@ func TestWriteBufferedFile(t *testing.T) {
 		testData := []byte("Test data")
 		bufferSize := 5
 
-		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize)
+		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize, os.ModePerm)
 		if err != nil {
 			t.Errorf("Failed to write buffered file: %v", err)
 		}
@@ -353,7 +353,7 @@ func TestWriteBufferedFile(t *testing.T) {
 		testData := []byte{}
 		bufferSize := 5
 
-		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize)
+		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize, os.ModePerm)
 		if err != nil {
 			t.Errorf("Failed to write buffered file: %v", err)
 		}
@@ -386,7 +386,7 @@ func TestWriteBufferedFile(t *testing.T) {
 		testData := []byte("This is a large amount of data")
 		bufferSize := 10
 
-		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize)
+		err := defaultClient.WriteBufferedFile(testFilePath, testData, bufferSize, os.ModePerm)
 		if err != nil {
 			t.Errorf("Failed to write buffered file: %v", err)
 		}
@@ -770,7 +770,7 @@ func TestChecksum(t *testing.T) {
 	t.Run("File does not exist", func(t *testing.T) {
 		defaultClient := Default()
 		testFilePath := filepath.Join(getTestPath(), "test_file.txt")
-		_, err := defaultClient.Checksum(testFilePath, MD5)
+		_, err := defaultClient.Checksum(testFilePath, ChecksumMD5)
 
 		assert.Error(t, err)
 	})
@@ -780,7 +780,7 @@ func TestChecksum(t *testing.T) {
 		testFilePath := filepath.Join(getTestPath(), "test_file_1.txt")
 		expectedChecksum := "bad71408e80acc34a474d42ce219d154"
 
-		checksum, err := defaultClient.Checksum(testFilePath, MD5)
+		checksum, err := defaultClient.Checksum(testFilePath, ChecksumMD5)
 		if err != nil {
 			t.Errorf("Expected no error, but got: %v", err)
 		}
@@ -793,7 +793,7 @@ func TestChecksum(t *testing.T) {
 		testFilePath := filepath.Join(getTestPath(), "test_file_1.txt")
 		expectedChecksum := "346722065c7c68422dcfbfa6bb6280300aa168a6"
 
-		checksum, err := defaultClient.Checksum(testFilePath, SHA1)
+		checksum, err := defaultClient.Checksum(testFilePath, ChecksumSHA1)
 		if err != nil {
 			t.Errorf("Expected no error, but got: %v", err)
 		}
@@ -806,7 +806,7 @@ func TestChecksum(t *testing.T) {
 		testFilePath := filepath.Join(getTestPath(), "test_file_1.txt")
 		expectedChecksum := "030685cfa852639dee5e327f54153df00af48f75e146331b44ee72fe3b0cee6a"
 
-		checksum, err := defaultClient.Checksum(testFilePath, SHA256)
+		checksum, err := defaultClient.Checksum(testFilePath, ChecksumSHA256)
 		if err != nil {
 			t.Errorf("Expected no error, but got: %v", err)
 		}

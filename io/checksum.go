@@ -3,7 +3,7 @@ package io
 type ChecksumMethod int
 
 const (
-	MD5 ChecksumMethod = iota
-	SHA1
-	SHA256
+	ChecksumMD5 ChecksumMethod = iota
+	ChecksumSHA1
+	ChecksumSHA256
 )

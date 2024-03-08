@@ -124,18 +124,23 @@ func (f DefaultFileIo) WriteFile(path string, data []byte, mode os.FileMode) err
 	return nil
 }
 
-func (f DefaultFileIo) WriteBufferedFile(path string, data []byte, bufferSize int) error {
+func (f DefaultFileIo) WriteBufferedFile(path string, data []byte, bufferSize int, mode os.FileMode) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
+	if err := file.Chmod(mode); err != nil {
+		return err
+	}
+
 	for i := 0; i < len(data); i += bufferSize {
 		end := i + bufferSize
 		if end > len(data) {
 			end = len(data)
 		}
+
 		_, err = file.Write(data[i:end])
 		if err != nil {
 			return err
@@ -260,19 +265,19 @@ func (f DefaultFileIo) Checksum(path string, method ChecksumMethod) (string, err
 	}
 	var hash hash.Hash
 	switch method {
-	case MD5:
+	case ChecksumMD5:
 		hash = md5.New()
 		_, err := io.Copy(hash, file)
 		if err != nil {
 			return "", err
 		}
-	case SHA1:
+	case ChecksumSHA1:
 		hash = sha1.New()
 		_, err := io.Copy(hash, file)
 		if err != nil {
 			return "", err
 		}
-	case SHA256:
+	case ChecksumSHA256:
 		hash = sha256.New()
 		_, err := io.Copy(hash, file)
 		if err != nil {

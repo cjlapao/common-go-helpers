@@ -11,10 +11,10 @@ type OperatingSystem int
 
 // Defines the operating system Enum
 const (
-	WindowsOs OperatingSystem = iota
+	UnknownOs OperatingSystem = iota
+	WindowsOs
 	LinuxOs
 	MacOs
-	UnknownOs
 )
 
 // getOperatingSystem returns the operating system
