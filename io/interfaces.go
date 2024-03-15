@@ -24,4 +24,5 @@ type FileIo interface {
 	CopyDir(source, destination string) error
 	DeleteDir(path string) error
 	Checksum(path string, method ChecksumMethod) (string, error)
+	FileInfo(path string) (os.FileInfo, error)
 }

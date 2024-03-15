@@ -434,6 +434,26 @@ func (f MockFileIo) Checksum(path string, method helpers_io.ChecksumMethod) (str
 	return "", os.ErrNotExist
 }
 
+func (f MockFileIo) FileInfo(path string) (os.FileInfo, error) {
+	for _, op := range f.mocks {
+		if op.Method == "FileInfo" {
+			if op.FuncWithErr != nil {
+				op.CalledWith = []MockFuncArgument{}
+				argument1 := MockFuncArgument{
+					Name:  "path",
+					Value: path,
+				}
+				op.CalledWith = append(op.CalledWith, argument1)
+				return processFunctionWithErr[os.FileInfo](op.FuncWithErr, op.ReturnError, argument1)
+			} else {
+				return processResult[os.FileInfo](op.ReturnValue), op.ReturnError
+			}
+		}
+	}
+
+	return nil, os.ErrNotExist
+}
+
 func processFunction[T any](fn func(args ...MockFuncArgument) interface{}, args ...MockFuncArgument) T {
 	var def T
 	if fn != nil {

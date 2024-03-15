@@ -824,3 +824,35 @@ func TestChecksum(t *testing.T) {
 		}
 	})
 }
+
+func TestFileInfo(t *testing.T) {
+	t.Run("File Exists", func(t *testing.T) {
+		defaultClient := Default()
+		existingFilePath := filepath.Join(getTestPath(), "test_file_1.txt")
+
+		fileInfo, err := defaultClient.FileInfo(existingFilePath)
+		if err != nil {
+			t.Errorf("Expected no error, but got: %v", err)
+		}
+
+		// Verify if the file info is not nil
+		if fileInfo == nil {
+			t.Errorf("Expected non-nil file info, but got nil")
+		}
+
+		// Verify if the file exists
+		if !defaultClient.FileExists(existingFilePath) {
+			t.Errorf("Expected file to exist, but it doesn't")
+		}
+	})
+
+	t.Run("File Does Not Exist", func(t *testing.T) {
+		defaultClient := Default()
+		nonExistingFilePath := filepath.Join(getTestPath(), "non_existing_file.txt")
+
+		_, err := defaultClient.FileInfo(nonExistingFilePath)
+		if !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("Expected error os.ErrNotExist, but got: %v", err)
+		}
+	})
+}

@@ -289,3 +289,11 @@ func (f DefaultFileIo) Checksum(path string, method ChecksumMethod) (string, err
 
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
+
+func (f DefaultFileIo) FileInfo(path string) (os.FileInfo, error) {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	return fileInfo, nil
+}
